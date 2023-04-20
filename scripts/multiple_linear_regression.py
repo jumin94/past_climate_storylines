@@ -40,6 +40,7 @@ class spatial_MLR(object):
         :return: target variable for the regression  
         """
         self.target = variable
+        regressor_indices = regressors
         self.regression_y = sm.add_constant(regressors.values)
         self.regressors = regressors.values
         self.rd_num = len(regressor_names)
@@ -90,20 +91,20 @@ class spatial_MLR(object):
         """
         
         target_var = xr.apply_ufunc(replace_nans_with_zero, self.target)
-        results = xr.apply_ufunc(self.linear_regression,target_var,input_core_dims=[["time"]],
+        results = xr.apply_ufunc(self.linear_regression,target_var,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num)],
                                  vectorize=True,
                                  dask="parallelized")
-        results_pvalues = xr.apply_ufunc(self.linear_regression_pvalues,target_var,input_core_dims=[["time"]],
+        results_pvalues = xr.apply_ufunc(self.linear_regression_pvalues,target_var,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num)],
                                  vectorize=True,
                                  dask="parallelized")
-        results_R2 = xr.apply_ufunc(self.linear_regression_R2,target_var,input_core_dims=[["time"]],
+        results_R2 = xr.apply_ufunc(self.linear_regression_R2,target_var,input_core_dims=[["model"]],
                                  output_core_dims=[[]],
                                  vectorize=True,
                                  dask="parallelized")
         
-        relative_importance = xr.apply_ufunc(self.linear_regression_relative_importance,target_var,input_core_dims=[["time"]],
+        relative_importance = xr.apply_ufunc(self.linear_regression_relative_importance,target_var,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num-1)],
                                  vectorize=True,
                                  dask="parallelized")
@@ -121,8 +122,7 @@ class spatial_MLR(object):
             if i == 0:
                 regression_coefs_pvalues = results_pvalues[0].to_dataset()
             else:
-                regression_coefs_pvalues[self.regressor_names[i]] = results[i]
-                
+                regression_coefs_pvalues[self.regressor_names[i]] = results[i]            
         regression_coefs_pvalues = regression_coefs_pvalues.rename({'ua':self.regressor_names[0]})
         regression_coefs_pvalues.to_netcdf(path+'/regression_coefficients_pvalues.nc')
         
@@ -150,6 +150,7 @@ class spatial_MLR(object):
             x = np.append(x,aux[i-1,j-1].values)
         return stand(x)
      
+    
     def open_regression_coef(self,path):
         """ Open regression coefficients and pvalues to plot
         :param path: saving path
@@ -180,13 +181,13 @@ class spatial_MLR(object):
         R2 = xr.open_dataset(path+'/R2.nc')
         return maps, maps_pval, R2    
     
-    def plot_regression_lmg_map(self,path,var,alias,output_path):
+    def plot_regression_lmg_map(self,path,var,output_path):
         """ Plots figure with all of 
         :param regressor_names: list with strings naming the independent variables
         :param path: saving path
         :return: none
         """
-        maps, maps_pval, R2 = self.open_lmg_coef(path+'/'+var+'/'+alias)
+        maps, maps_pval, R2 = self.open_lmg_coef(path+'/'+var)
         cmapU850 = mpl.colors.ListedColormap(['darkblue','navy','steelblue','lightblue',
                                             'lightsteelblue','white','white','mistyrose',
                                             'lightcoral','indianred','brown','firebrick'])
@@ -237,13 +238,13 @@ class spatial_MLR(object):
             cbar.ax.tick_params(axis='both',labelsize=14)
             
         plt.subplots_adjust(bottom=0.2, right=.95, top=0.8)
-        plt.savefig(output_path+'/regression_coefficients_relative_importance_u850_'+alias,bbox_inches='tight')
+        plt.savefig(output_path+'/regression_coefficients_relative_importance_u850',bbox_inches='tight')
         plt.clf
 
         return fig_coef
 
 
-    def plot_regression_coef_map(self,path,var,alias,output_path):
+    def plot_regression_coef_map(self,path,var,output_path):
         """ Plots figure with all of 
         :param regressor_names: list with strings naming the independent variables
         :param path: saving path
@@ -303,7 +304,7 @@ class spatial_MLR(object):
             cbar.ax.tick_params(axis='both',labelsize=14)
             
         plt.subplots_adjust(bottom=0.2, right=.95, top=0.8)
-        plt.savefig(output_path+'/regression_coefficients_u850_'+alias,bbox_inches='tight')
+        plt.savefig(output_path+'/regression_coefficients_u850',bbox_inches='tight')
         plt.clf
 
         return fig_coef
@@ -378,17 +379,43 @@ def main(config):
     meta = group_metadata(config["input_data"].values(), "alias")
     rd_list = []
     target_wind_list = []
-    #print(f"\n\n\n{meta}")
+    models = []
+    count = 0
     for alias, alias_list in meta.items():
         #print(f"Computing index regression for {alias}\n")
         ts_dict = {m["variable_group"]: xr.open_dataset(m["filename"])[m["short_name"]].values for m in alias_list if ("change" in m["variable_group"]) & (m["variable_group"] != "gw") & (m["variable_group"] != "ua850") & (m["variable_group"] != "sst")}
         rd_list.append(ts_dict)
         target_wind = [xr.open_dataset(m["filename"])[m["short_name"]] for m in alias_list if m["variable_group"] == "ua850_change"]
-        target_wind_list.append(targe_wind)
+        if len(target_wind != 0):
+            target_wind_list.append(target_wind[0])
+            count +=1
+            models.append(count)
+        else:
+            continue
     
-    print(rd_list)
-    print(target_wind_list)        
-  
+    #Across model regrssion - create data array
+    regressor_names = rd_list[0].keys()
+    regressors = {}
+    for rd in regressor_names:
+        list_values = [rd_list[m][rd].values for m,model in enumerate(rd_list)]
+        regressors[rd] = np.array(list_values)
+    
+    ua850_ens = xr.concat(target_wind_list,pd.Index(models),name="model")
+    print(regressors)
+    print(ua850_ens)  
+    MLR = spatial_MLR()
+    MLR.regression_data(ua850_ens,pd.DataFrame(regressors).apply(stand,axis=0),pd.DataFrame(regressors).keys().insert(0,'MEM'))
+    os.chdir(config["work_dir"])
+    os.getcwd()
+    os.makedirs("across_model_regression_historical",exist_ok=True)
+    os.chdir(config["plot_dir"])
+    os.getcwd()
+    os.makedirs("across_model_regression_historical",exist_ok=True)
+    MLR.perform_regression(config["work_dir"]+'/across_model_regression_historical')
+    MLR.plot_regression_coef_map(config["work_dir"],'across_model_regression_historical',config["plot_dir"]+'/across_model_regression_historical')
+    MLR.plot_regression_lmg_map(config["work_dir"],'across_model_regression_historical',config["plot_dir"]+'/across_model_regression_historical')
+                    
+    
 if __name__ == "__main__":
     with run_diagnostic() as config:
         main(config)

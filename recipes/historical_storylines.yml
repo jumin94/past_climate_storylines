@@ -1429,6 +1429,7 @@ datasets_Omon: &dOmon
 
 preprocessors:
   general_preproc_change: &general_preproc_change
+    custom_order: true
     extract_season:
       season: djf
     seasonal_statistics:
@@ -1441,7 +1442,10 @@ preprocessors:
     climate_statistics:
       operator: mean
       period: full
+    ensemble_statistics:
+      statistics: mean
   general_preproc_spv_change: &general_preproc_change_spv
+    custom_order: true
     extract_season:
       season: ond
     seasonal_statistics:
@@ -1454,22 +1458,28 @@ preprocessors:
     climate_statistics:
       operator: mean
       period: full
+    ensemble_statistics:
+      statistics: mean
   general_preproc_trend: &general_preproc_trend
+    custom_order: true
     extract_season:
       season: djf
     seasonal_statistics:
       operator: mean
-    trend_preproc:
-      linear_trend:
-        coordinate: time
+    linear_trend:
+      coordinate: time
+    ensemble_statistics:
+      statistics: mean
   general_preproc_spv_trend: &general_preproc_trend_spv
+    custom_order: true
     extract_season:
       season: ond
     seasonal_statistics:
       operator: mean
-    trend_preproc:
-      linear_trend:
-        coordinate: time
+    linear_trend:
+      coordinate: time
+    ensemble_statistics:
+      statistics: mean
   Amon_regrid: &Amon_regrid
     regrid:
       scheme:
@@ -1744,4 +1754,4 @@ diagnostics:
 
     scripts:
       multiple_regresion:
-        script: /home/users/tabu/past_climate_storylines/scripts/multiple_linear_regression.py
+        script: /datos/julia.mindlin/past_climate_storylines/scripts/multiple_linear_regression.py

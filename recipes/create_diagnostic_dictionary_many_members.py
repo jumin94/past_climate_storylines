@@ -1,7 +1,7 @@
 import glob
 import os
 import yaml
-rootpath="/badc/cmip6/data/CMIP6"
+rootpath="/shera/datos/CMIP/CMIP6"
 
 short_name = "ua"
 mip = "Amon"
@@ -14,10 +14,11 @@ for file in file_list_Amon:
     file_attrs = file.split("/")[-9:-2]
     keys = ["dataset","exp","ensemble","mip","short_name","grid"]
     file_list_Omon = glob.glob(os.path.join(rootpath+'/ScenarioMIP/'+('/').join(file_attrs[:4])+"/Omon/tos/*/*/*2015*.nc"))
+    file_list_Omon_hist = glob.glob(os.path.join(rootpath+'/CMIP/'+('/').join(file_attrs[:4])+"/Omon/tos/*/*/*2014*.nc"))
     #print(rootpath+'/ScenarioMIP/'+('/').join(file_attrs[:4])+"/Omon/tos/*/*/*2014*.nc")
     #print(file_list_Omon)
     lista  = [m["dataset"] for m in dict_attr_list]
-    if len(file_list_Omon) != 0:
+    if len(file_list_Omon) != 0 and len(file_list_Omon_hist) != 0:
         file_attrs_Omon = file_list_Omon[0].split("/")[-8:-2]
         dict_attr = {key: value for key,value in zip(keys,file_attrs[1:])}
         dict_attr["exp"] = ["historical", "ssp585"]
@@ -42,5 +43,5 @@ list_Omon = [i for n, i in enumerate(dict_attr_list_Omon)
 
 list_Amon = [i for n, i in enumerate(dict_attr_list)
             if i not in dict_attr_list[n + 1:]]
-with open("/home/users/tabu/past_climate_storylines/recipes/Amon_Omon_recipe_datasets_only.yml", "w") as f:
+with open("/datos/julia.mindlin/past_climate_storylines/recipes/Amon_Omon_recipe_datasets_only.yml", "w") as f:
     yaml.dump({"datasets_Amon": list_Amon,"datasets_Omon": list_Omon}, f, default_flow_style=False)
