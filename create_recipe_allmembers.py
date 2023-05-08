@@ -42,7 +42,8 @@ list_Omon = [i for n, i in enumerate(dict_attr_list_Omon)
 list_Amon = [i for n, i in enumerate(dict_attr_list)
             if i not in dict_attr_list[n + 1:]]            
 
-with open("/datos/julia.mindlin/past_climate_storylines/recipes/Amon_Omon_recipe.yml", "w") as f:
+with open("/datos/julia.mindlin/past_climate_storylines/recipes/Amon_Omon_recipe_allmembers.yml", "w") as f:
     yaml.dump({"datasets_Amon": list_Amon,"datasets_Omon": list_Omon}, f, default_flow_style=False)
 
+print(list_Amon.keys())
 print('cantidad de miembros: ',len(list_Amon))

@@ -27,7 +27,7 @@ config_developer_file: /datos/julia.mindlin/config-files/config-developer.yml
 # Run at most this many tasks in parallel null/[1]/2/3/4/..
 # Set to null to use the number of available CPUs.
 # Make sure your system has enough memory for the specified number of tasks.
-max_parallel_tasks: 4
+max_parallel_tasks: 1
 # Get profiling information for diagnostics
 # Only available for Python diagnostics
 profile_diagnostic: false
